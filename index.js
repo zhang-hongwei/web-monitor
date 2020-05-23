@@ -1,20 +1,23 @@
-// import Perf from "./performance";
+/*
+ * @Author: zhanghongwei
+ * @Date: 2020-05-23 14:36:43
+ * @Last Modified by: zhanghongwei
+ * @Last Modified time: 2020-05-23 15:27:13
+ */
 
+// import Perf from "./performance";
 // import { proxy as ajaxHook, unProxy } from "./ajaxHook/xhr-proxy";
-// import worker from "./worker";
-// // import { domready } from "./utils/index.js";
-import errorCatch from "./error/index.js";
+// // import worker from "./worker";
+
+// import ErrorCatch from "./error/index.js";
 
 // class Monitor {
 //   constructor() {
-//     // domready(this.init.bind(this));
-//     // console.log(123123123123);
 //     this.init();
 //   }
 
 //   init() {
 //     // worker();
-//     // console.log(123123123123);
 //     // 收集ajax fetch
 //     ajaxHook({
 //       //请求成功后进入
@@ -25,23 +28,26 @@ import errorCatch from "./error/index.js";
 
 //     // 性能监控
 //     const pf = new Perf({
-//       callback: (performances) => {
-//         console.log("performances=====callback===>", performances.getEntries());
-//       },
-//       report: (data) => {
+//       timingReport: (data) => {
 //         console.log(123);
 //         console.log("data=======>", data);
 //       },
-//       resourceReport: () => {},
+//       resourceReport: (data) => {},
 //     });
 
 //     // 收集错误信息
+//     const error = new ErrorCatch({
+//       callback: (err) => {
+//         console.log("err================<", err);
+//       },
+//     });
 //   }
 // }
 
 // new Monitor();
-// // export default Monitor;
-console.log("err================<", 123123);
-errorCatch.init((err) => {
-  console.log("err================<", err);
-});
+import { _, userAgent, addListener } from "./utils/index";
+
+// let infos = _.info.properties(),;
+window._ = _;
+
+console.log("infos======>", _);

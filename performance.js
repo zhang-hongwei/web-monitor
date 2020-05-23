@@ -9,37 +9,26 @@ let performance =
 
 class Perf {
   constructor(options) {
+    this._options = options;
     this.isOnload = false;
     this.isDOMReady = false;
     this.cycleFreq = 100;
 
     this.domready(() => {
-      console.log("domready", 12323123123);
       let perfData = this.getTimingReport();
       perfData.type = "domready";
-      options.report(perfData);
+      options.timingReport(perfData);
     });
     this.onload(() => {
-      console.log("onload", 12323123123);
       let perfData = this.getTimingReport();
       perfData.type = "onload";
-      options.report(perfData);
+      options.timingReport(perfData);
     });
 
-    loaded(this.getResourceReport.bind(this, options));
+    loaded(this.getResourceReport.bind(this));
   }
 
-  getEntries() {
-    return performance.getEntries();
-  }
-  getEntriesByName(name) {
-    return performance.getEntriesByName(name);
-  }
-  getEntriesByType(type) {
-    return performance.getEntriesByType(type);
-  }
-
-  getResourceReport(options) {
+  getResourceReport() {
     // 过滤无效数据
     function filterTime(a, b) {
       return a > 0 && b > 0 && a - b >= 0 ? a - b : undefined;
@@ -72,7 +61,7 @@ class Perf {
       const observer = new PerformanceObserver((list) => {
         try {
           let entries = list.getEntries();
-          options.resourceReport(resolveEntries(entries));
+          this._options.resourceReport(resolveEntries(entries));
         } catch (e) {
           console.error(e);
         }
