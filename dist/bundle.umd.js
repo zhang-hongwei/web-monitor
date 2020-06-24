@@ -11,8 +11,674 @@ var Config = {
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var platform = function () {
+  function platform() {
+    _classCallCheck(this, platform);
+
+    this._platform = {};
+    this.objectTypes = {
+      function: true,
+      object: true
+    };
+
+    this._root = this.objectTypes[typeof window === "undefined" ? "undefined" : _typeof(window)] && window || this;
+    this.oldRoot = this.root;
+    this.freeExports = this.objectTypes[typeof exports === "undefined" ? "undefined" : _typeof(exports)] && exports;
+    this.freeModule = this.objectTypes[typeof module === "undefined" ? "undefined" : _typeof(module)] && module && !module.nodeType && module;
+    this.freeGlobal = this.freeExports && this.freeModule && (typeof global === "undefined" ? "undefined" : _typeof(global)) == "object" && global;
+    if (this.freeGlobal && (this.freeGlobal.global === this.freeGlobal || this.freeGlobal.window === this.freeGlobal || this.freeGlobal.self === this.freeGlobal)) {
+      this.root = this.freeGlobal;
+    }
+
+    this.maxSafeInteger = Math.pow(2, 53) - 1;
+    this.reOpera = /\bOpera/;
+    this.thisBinding = this;
+    this.objectProto = Object.prototype;
+    this.hasOwnProperty = this.objectProto.hasOwnProperty;
+    this.toString = this.objectProto.toString;
+
+    this.init();
+  }
+
+  _createClass(platform, [{
+    key: "capitalize",
+    value: function capitalize(string) {
+      string = String(string);
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+  }, {
+    key: "cleanupOS",
+    value: function cleanupOS(os, pattern, label) {
+      var data = {
+        "10.0": "10",
+        "6.4": "10 Technical Preview",
+        "6.3": "8.1",
+        "6.2": "8",
+        "6.1": "Server 2008 R2 / 7",
+        "6.0": "Server 2008 / Vista",
+        "5.2": "Server 2003 / XP 64-bit",
+        "5.1": "XP",
+        "5.01": "2000 SP1",
+        "5.0": "2000",
+        "4.0": "NT",
+        "4.90": "ME"
+      };
+      // Detect Windows version from platform tokens.
+      if (pattern && label && /^Win/i.test(os) && !/^Windows Phone /i.test(os) && (data = data[/[\d.]+$/.exec(os)])) {
+        os = "Windows " + data;
+      }
+      // Correct character case and cleanup string.
+      os = String(os);
+
+      if (pattern && label) {
+        os = os.replace(RegExp(pattern, "i"), label);
+      }
+
+      os = this.format(os.replace(/ ce$/i, " CE").replace(/\bhpw/i, "web").replace(/\bMacintosh\b/, "Mac OS").replace(/_PowerPC\b/i, " OS").replace(/\b(OS X) [^ \d]+/i, "$1").replace(/\bMac (OS X)\b/, "$1").replace(/\/(\d)/, " $1").replace(/_/g, ".").replace(/(?: BePC|[ .]*fc[ \d.]+)$/i, "").replace(/\bx86\.64\b/gi, "x86_64").replace(/\b(Windows Phone) OS\b/, "$1").replace(/\b(Chrome OS \w+) [\d.]+\b/, "$1").split(" on ")[0]);
+
+      return os;
+    }
+  }, {
+    key: "each",
+    value: function each(object, callback) {
+      var index = -1,
+          length = object ? object.length : 0;
+
+      if (typeof length == "number" && length > -1 && length <= this.maxSafeInteger) {
+        while (++index < length) {
+          callback(object[index], index, object);
+        }
+      } else {
+        this.forOwn(object, callback);
+      }
+    }
+  }, {
+    key: "format",
+    value: function format(string) {
+      string = this.trim(string);
+      return (/^(?:webOS|i(?:OS|P))/.test(string) ? string : this.capitalize(string)
+      );
+    }
+  }, {
+    key: "forOwn",
+    value: function forOwn(object, callback) {
+      for (var key in object) {
+        if (hasOwnProperty.call(object, key)) {
+          callback(object[key], key, object);
+        }
+      }
+    }
+  }, {
+    key: "getClassOf",
+    value: function getClassOf(value) {
+      return value == null ? this.capitalize(value) : toString.call(value).slice(8, -1);
+    }
+  }, {
+    key: "isHostType",
+    value: function isHostType(object, property) {
+      var type = object != null ? _typeof(object[property]) : "number";
+      return !/^(?:boolean|number|string|undefined)$/.test(type) && (type == "object" ? !!object[property] : true);
+    }
+  }, {
+    key: "qualify",
+    value: function qualify(string) {
+      return String(string).replace(/([ -])(?!$)/g, "$1?");
+    }
+  }, {
+    key: "reduce",
+    value: function reduce(array, callback) {
+      var accumulator = null;
+      this.each(array, function (value, index) {
+        accumulator = callback(accumulator, value, index, array);
+      });
+      return accumulator;
+    }
+  }, {
+    key: "trim",
+    value: function trim(string) {
+      return String(string).replace(/^ +| +$/g, "");
+    }
+  }, {
+    key: "parse",
+    value: function parse(ua) {
+      var _this = this;
+      var context = this._root;
+      var isCustomContext = ua && (typeof ua === "undefined" ? "undefined" : _typeof(ua)) == "object" && this.getClassOf(ua) != "String";
+
+      if (isCustomContext) {
+        context = ua;
+        ua = null;
+      }
+
+      var nav = context.navigator || {};
+      var userAgent = nav.userAgent || "";
+
+      ua || (ua = userAgent);
+
+      var isModuleScope = isCustomContext || this.thisBinding == this.oldRoot;
+
+      var likeChrome = isCustomContext ? !!nav.likeChrome : /\bChrome\b/.test(ua) && !/internal|\n/i.test(toString.toString());
+
+      var objectClass = "Object",
+          airRuntimeClass = isCustomContext ? objectClass : "ScriptBridgingProxyObject",
+          enviroClass = isCustomContext ? objectClass : "Environment",
+          javaClass = isCustomContext && context.java ? "JavaPackage" : this.getClassOf(context.java),
+          phantomClass = isCustomContext ? objectClass : "RuntimeObject";
+
+      var java = /\bJava/.test(javaClass) && context.java;
+      var rhino = java && this.getClassOf(context.environment) == enviroClass;
+      var alpha = java ? "a" : "\u03B1";
+      var beta = java ? "b" : "\u03B2";
+      var doc = context.document || {};
+      var opera = context.operamini || context.opera;
+      var operaClass = null;
+      operaClass = this.reOpera.test(operaClass = isCustomContext && opera ? opera["[[Class]]"] : this.getClassOf(opera)) ? operaClass : opera = null;
+      var data = void 0;
+      var arch = ua;
+      var description = [];
+      var prerelease = null;
+      var useFeatures = ua == userAgent;
+      var version = useFeatures && opera && typeof opera.version == "function" && opera.version();
+      var isSpecialCasedOS = void 0;
+
+      var layout = getLayout.call(this, [{ label: "EdgeHTML", pattern: "(?:Edge|EdgA|EdgiOS)" }, "Trident", { label: "WebKit", pattern: "AppleWebKit" }, "iCab", "Presto", "NetFront", "Tasman", "KHTML", "Gecko"]);
+
+      /* Detectable browser names (order is important). */
+      var name = getName(["Adobe AIR", "Arora", "Avant Browser", "Breach", "Camino", "Electron", "Epiphany", "Fennec", "Flock", "Galeon", "GreenBrowser", "iCab", "Iceweasel", "K-Meleon", "Konqueror", "Lunascape", "Maxthon", { label: "Microsoft Edge", pattern: "(?:Edge|Edg|EdgA|EdgiOS)" }, "Midori", "Nook Browser", "PaleMoon", "PhantomJS", "Raven", "Rekonq", "RockMelt", { label: "Samsung Internet", pattern: "SamsungBrowser" }, "SeaMonkey", { label: "Silk", pattern: "(?:Cloud9|Silk-Accelerated)" }, "Sleipnir", "SlimBrowser", { label: "SRWare Iron", pattern: "Iron" }, "Sunrise", "Swiftfox", "Waterfox", "WebPositive", "Opera Mini", { label: "Opera Mini", pattern: "OPiOS" }, "Opera", { label: "Opera", pattern: "OPR" }, "Chrome", { label: "Chrome Mobile", pattern: "(?:CriOS|CrMo)" }, { label: "Firefox", pattern: "(?:Firefox|Minefield)" }, { label: "Firefox for iOS", pattern: "FxiOS" }, { label: "IE", pattern: "IEMobile" }, { label: "IE", pattern: "MSIE" }, "Safari"]);
+
+      var product = getProduct([{ label: "BlackBerry", pattern: "BB10" }, "BlackBerry", { label: "Galaxy S", pattern: "GT-I9000" }, { label: "Galaxy S2", pattern: "GT-I9100" }, { label: "Galaxy S3", pattern: "GT-I9300" }, { label: "Galaxy S4", pattern: "GT-I9500" }, { label: "Galaxy S5", pattern: "SM-G900" }, { label: "Galaxy S6", pattern: "SM-G920" }, { label: "Galaxy S6 Edge", pattern: "SM-G925" }, { label: "Galaxy S7", pattern: "SM-G930" }, { label: "Galaxy S7 Edge", pattern: "SM-G935" }, "Google TV", "Lumia", "iPad", "iPod", "iPhone", "Kindle", { label: "Kindle Fire", pattern: "(?:Cloud9|Silk-Accelerated)" }, "Nexus", "Nook", "PlayBook", "PlayStation Vita", "PlayStation", "TouchPad", "Transformer", { label: "Wii U", pattern: "WiiU" }, "Wii", "Xbox One", { label: "Xbox 360", pattern: "Xbox" }, "Xoom"]);
+
+      var manufacturer = getManufacturer({
+        Apple: { iPad: 1, iPhone: 1, iPod: 1 },
+        Archos: {},
+        Amazon: { Kindle: 1, "Kindle Fire": 1 },
+        Asus: { Transformer: 1 },
+        "Barnes & Noble": { Nook: 1 },
+        BlackBerry: { PlayBook: 1 },
+        Google: { "Google TV": 1, Nexus: 1 },
+        HP: { TouchPad: 1 },
+        HTC: {},
+        LG: {},
+        Microsoft: { Xbox: 1, "Xbox One": 1 },
+        Motorola: { Xoom: 1 },
+        Nintendo: { "Wii U": 1, Wii: 1 },
+        Nokia: { Lumia: 1 },
+        Samsung: {
+          "Galaxy S": 1,
+          "Galaxy S2": 1,
+          "Galaxy S3": 1,
+          "Galaxy S4": 1
+        },
+        Sony: { PlayStation: 1, "PlayStation Vita": 1 }
+      });
+
+      /* Detectable operating systems (order is important). */
+      var os = getOS(["Windows Phone", "Android", "CentOS", { label: "Chrome OS", pattern: "CrOS" }, "Debian", "Fedora", "FreeBSD", "Gentoo", "Haiku", "Kubuntu", "Linux Mint", "OpenBSD", "Red Hat", "SuSE", "Ubuntu", "Xubuntu", "Cygwin", "Symbian OS", "hpwOS", "webOS ", "webOS", "Tablet OS", "Tizen", "Linux", "Mac OS X", "Macintosh", "Mac", "Windows 98;", "Windows "]);
+
+      function getLayout(guesses) {
+        return _this.reduce(guesses, function (result, guess) {
+          return result || RegExp("\\b" + (guess.pattern || _this.qualify(guess)) + "\\b", "i").exec(ua) && (guess.label || guess);
+        });
+      }
+
+      function getManufacturer(guesses) {
+        return _this.reduce(guesses, function (result, value, key) {
+          // Lookup the manufacturer by product or scan the UA for the manufacturer.
+          return result || (value[product] || value[/^[a-z]+(?: +[a-z]+\b)*/i.exec(product)] || RegExp("\\b" + _this.qualify(key) + "(?:\\b|\\w*\\d)", "i").exec(ua)) && key;
+        });
+      }
+
+      function getName(guesses) {
+        return _this.reduce(guesses, function (result, guess) {
+          return result || RegExp("\\b" + (guess.pattern || _this.qualify(guess)) + "\\b", "i").exec(ua) && (guess.label || guess);
+        });
+      }
+
+      function getOS(guesses) {
+        return _this.reduce(guesses, function (result, guess) {
+          var pattern = guess.pattern || _this.qualify(guess);
+          if (!result && (result = RegExp("\\b" + pattern + "(?:/[\\d.]+|[ \\w.]*)", "i").exec(ua))) {
+            result = _this.cleanupOS(result, pattern, guess.label || guess);
+          }
+          return result;
+        });
+      }
+
+      function getProduct(guesses) {
+        return _this.reduce(guesses, function (result, guess) {
+          var pattern = guess.pattern || _this.qualify(guess);
+          if (!result && (result = RegExp("\\b" + pattern + " *\\d+[.\\w_]*", "i").exec(ua) || RegExp("\\b" + pattern + " *\\w+-[\\w]*", "i").exec(ua) || RegExp("\\b" + pattern + "(?:; *(?:[a-z]+[_-])?[a-z]+\\d+|[^ ();-]*)", "i").exec(ua))) {
+            // Split by forward slash and append product version if needed.
+            if ((result = String(guess.label && !RegExp(pattern, "i").test(guess.label) ? guess.label : result).split("/"))[1] && !/[\d.]+/.test(result[0])) {
+              result[0] += " " + result[1];
+            }
+            // Correct character case and cleanup string.
+            guess = guess.label || guess;
+            result = _this.format(result[0].replace(RegExp(pattern, "i"), guess).replace(RegExp("; *(?:" + guess + "[_-])?", "i"), " ").replace(RegExp("(" + guess + ")[-_.]?(\\w)", "i"), "$1 $2"));
+          }
+          return result;
+        });
+      }
+
+      function getVersion(patterns) {
+        return _this.reduce(patterns, function (result, pattern) {
+          return result || (RegExp(pattern + "(?:-[\\d.]+/|(?: for [\\w-]+)?[ /-])([\\d.]+[^ ();/_-]*)", "i").exec(ua) || 0)[1] || null;
+        });
+      }
+
+      function toStringPlatform() {
+        return _this.description || "";
+      }
+
+      layout && (layout = [layout]);
+
+      if (manufacturer && !product) {
+        product = getProduct([manufacturer]);
+      }
+
+      if (data = /\bGoogle TV\b/.exec(product)) {
+        product = data[0];
+      }
+
+      if (/\bSimulator\b/i.test(ua)) {
+        product = (product ? product + " " : "") + "Simulator";
+      }
+
+      if (name == "Opera Mini" && /\bOPiOS\b/.test(ua)) {
+        description.push("running in Turbo/Uncompressed mode");
+      }
+
+      if (name == "IE" && /\blike iPhone OS\b/.test(ua)) {
+        data = this.parse(ua.replace(/like iPhone OS/, ""));
+        manufacturer = data.manufacturer;
+        product = data.product;
+      } else if (/^iP/.test(product)) {
+        name || (name = "Safari");
+        os = "iOS" + ((data = / OS ([\d_]+)/i.exec(ua)) ? " " + data[1].replace(/_/g, ".") : "");
+      }
+      // Detect Kubuntu.
+      else if (name == "Konqueror" && !/buntu/i.test(os)) {
+          os = "Kubuntu";
+        }
+        // Detect Android browsers.
+        else if (manufacturer && manufacturer != "Google" && (/Chrome/.test(name) && !/\bMobile Safari\b/i.test(ua) || /\bVita\b/.test(product)) || /\bAndroid\b/.test(os) && /^Chrome/.test(name) && /\bVersion\//i.test(ua)) {
+            name = "Android Browser";
+            os = /\bAndroid\b/.test(os) ? os : "Android";
+          }
+          // Detect Silk desktop/accelerated modes.
+          else if (name == "Silk") {
+              if (!/\bMobi/i.test(ua)) {
+                os = "Android";
+                description.unshift("desktop mode");
+              }
+              if (/Accelerated *= *true/i.test(ua)) {
+                description.unshift("accelerated");
+              }
+            }
+            // Detect PaleMoon identifying as Firefox.
+            else if (name == "PaleMoon" && (data = /\bFirefox\/([\d.]+)\b/.exec(ua))) {
+                description.push("identifying as Firefox " + data[1]);
+              }
+              // Detect Firefox OS and products running Firefox.
+              else if (name == "Firefox" && (data = /\b(Mobile|Tablet|TV)\b/i.exec(ua))) {
+                  os || (os = "Firefox OS");
+                  product || (product = data[1]);
+                }
+                // Detect false positives for Firefox/Safari.
+                else if (!name || (data = !/\bMinefield\b/i.test(ua) && /\b(?:Firefox|Safari)\b/.exec(name))) {
+                    // Escape the `/` for Firefox 1.
+                    if (name && !product && /[\/,]|^[^(]+?\)/.test(ua.slice(ua.indexOf(data + "/") + 8))) {
+                      // Clear name of false positives.
+                      name = null;
+                    }
+                    // Reassign a generic name.
+                    if ((data = product || manufacturer || os) && (product || manufacturer || /\b(?:Android|Symbian OS|Tablet OS|webOS)\b/.test(os))) {
+                      name = /[a-z]+(?: Hat)?/i.exec(/\bAndroid\b/.test(os) ? os : data) + " Browser";
+                    }
+                  }
+                  // Add Chrome version to description for Electron.
+                  else if (name == "Electron" && (data = (/\bChrome\/([\d.]+)\b/.exec(ua) || 0)[1])) {
+                      description.push("Chromium " + data);
+                    }
+      // Detect non-Opera (Presto-based) versions (order is important).
+      if (!version) {
+        version = getVersion(["(?:Cloud9|CriOS|CrMo|Edge|Edg|EdgA|EdgiOS|FxiOS|IEMobile|Iron|Opera ?Mini|OPiOS|OPR|Raven|SamsungBrowser|Silk(?!/[\\d.]+$))", "Version", _this.qualify(name), "(?:Firefox|Minefield|NetFront)"]);
+      }
+      // Detect stubborn layout engines.
+      if (data = layout == "iCab" && parseFloat(version) > 3 && "WebKit" || /\bOpera\b/.test(name) && (/\bOPR\b/.test(ua) ? "Blink" : "Presto") || /\b(?:Midori|Nook|Safari)\b/i.test(ua) && !/^(?:Trident|EdgeHTML)$/.test(layout) && "WebKit" || !layout && /\bMSIE\b/i.test(ua) && (os == "Mac OS" ? "Tasman" : "Trident") || layout == "WebKit" && /\bPlayStation\b(?! Vita\b)/i.test(name) && "NetFront") {
+        layout = [data];
+      }
+      // Detect Windows Phone 7 desktop mode.
+      if (name == "IE" && (data = (/; *(?:XBLWP|ZuneWP)(\d+)/i.exec(ua) || 0)[1])) {
+        name += " Mobile";
+        os = "Windows Phone " + (/\+$/.test(data) ? data : data + ".x");
+        description.unshift("desktop mode");
+      }
+      // Detect Windows Phone 8.x desktop mode.
+      else if (/\bWPDesktop\b/i.test(ua)) {
+          name = "IE Mobile";
+          os = "Windows Phone 8.x";
+          description.unshift("desktop mode");
+          version || (version = (/\brv:([\d.]+)/.exec(ua) || 0)[1]);
+        }
+        // Detect IE 11 identifying as other browsers.
+        else if (name != "IE" && layout == "Trident" && (data = /\brv:([\d.]+)/.exec(ua))) {
+            if (name) {
+              description.push("identifying as " + name + (version ? " " + version : ""));
+            }
+            name = "IE";
+            version = data[1];
+          }
+      // Leverage environment features.
+      if (useFeatures) {
+        if (this.isHostType(context, "global")) {
+          if (java) {
+            data = java.lang.System;
+            arch = data.getProperty("os.arch");
+            os = os || data.getProperty("os.name") + " " + data.getProperty("os.version");
+          }
+          if (rhino) {
+            try {
+              version = context.require("ringo/engine").version.join(".");
+              name = "RingoJS";
+            } catch (e) {
+              if ((data = context.system) && data.global.system == context.system) {
+                name = "Narwhal";
+                os || (os = data[0].os || null);
+              }
+            }
+            if (!name) {
+              name = "Rhino";
+            }
+          } else if (_typeof(context.process) == "object" && !context.process.browser && (data = context.process)) {
+            if (_typeof(data.versions) == "object") {
+              if (typeof data.versions.electron == "string") {
+                description.push("Node " + data.versions.node);
+                name = "Electron";
+                version = data.versions.electron;
+              } else if (typeof data.versions.nw == "string") {
+                description.push("Chromium " + version, "Node " + data.versions.node);
+                name = "NW.js";
+                version = data.versions.nw;
+              }
+            }
+            if (!name) {
+              name = "Node.js";
+              arch = data.arch;
+              os = data.platform;
+              version = /[\d.]+/.exec(data.version);
+              version = version ? version[0] : null;
+            }
+          }
+        }
+        // Detect Adobe AIR.
+        else if (this.getClassOf(data = context.runtime) == airRuntimeClass) {
+            name = "Adobe AIR";
+            os = data.flash.system.Capabilities.os;
+          }
+          // Detect PhantomJS.
+          else if (this.getClassOf(data = context.phantom) == phantomClass) {
+              name = "PhantomJS";
+              version = (data = data.version || null) && data.major + "." + data.minor + "." + data.patch;
+            }
+            // Detect IE compatibility modes.
+            else if (typeof doc.documentMode == "number" && (data = /\bTrident\/(\d+)/i.exec(ua))) {
+                // We're in compatibility mode when the Trident version + 4 doesn't
+                // equal the document mode.
+                version = [version, doc.documentMode];
+                if ((data = +data[1] + 4) != version[1]) {
+                  description.push("IE " + version[1] + " mode");
+                  layout && (layout[1] = "");
+                  version[1] = data;
+                }
+                version = name == "IE" ? String(version[1].toFixed(1)) : version[0];
+              }
+              // Detect IE 11 masking as other browsers.
+              else if (typeof doc.documentMode == "number" && /^(?:Chrome|Firefox)\b/.test(name)) {
+                  description.push("masking as " + name + " " + version);
+                  name = "IE";
+                  version = "11.0";
+                  layout = ["Trident"];
+                  os = "Windows";
+                }
+        os = os && this.format(os);
+      }
+      // Detect prerelease phases.
+      if (version && (data = /(?:[ab]|dp|pre|[ab]\d+pre)(?:\d+\+?)?$/i.exec(version) || /(?:alpha|beta)(?: ?\d)?/i.exec(ua + ";" + (useFeatures && nav.appMinorVersion)) || /\bMinefield\b/i.test(ua) && "a")) {
+        prerelease = /b/i.test(data) ? "beta" : "alpha";
+        version = version.replace(RegExp(data + "\\+?$"), "") + (prerelease == "beta" ? beta : alpha) + (/\d+\+?/.exec(data) || "");
+      }
+      // Detect Firefox Mobile.
+      if (name == "Fennec" || name == "Firefox" && /\b(?:Android|Firefox OS)\b/.test(os)) {
+        name = "Firefox Mobile";
+      }
+      // Obscure Maxthon's unreliable version.
+      else if (name == "Maxthon" && version) {
+          version = version.replace(/\.[\d.]+/, ".x");
+        }
+        // Detect Xbox 360 and Xbox One.
+        else if (/\bXbox\b/i.test(product)) {
+            if (product == "Xbox 360") {
+              os = null;
+            }
+            if (product == "Xbox 360" && /\bIEMobile\b/.test(ua)) {
+              description.unshift("mobile mode");
+            }
+          }
+          // Add mobile postfix.
+          else if ((/^(?:Chrome|IE|Opera)$/.test(name) || name && !product && !/Browser|Mobi/.test(name)) && (os == "Windows CE" || /Mobi/i.test(ua))) {
+              name += " Mobile";
+            }
+            // Detect IE platform preview.
+            else if (name == "IE" && useFeatures) {
+                try {
+                  if (context.external === null) {
+                    description.unshift("platform preview");
+                  }
+                } catch (e) {
+                  description.unshift("embedded");
+                }
+              } else if ((/\bBlackBerry\b/.test(product) || /\bBB10\b/.test(ua)) && (data = (RegExp(product.replace(/ +/g, " *") + "/([.\\d]+)", "i").exec(ua) || 0)[1] || version)) {
+                data = [data, /BB10/.test(ua)];
+                os = (data[1] ? (product = null, manufacturer = "BlackBerry") : "Device Software") + " " + data[0];
+                version = null;
+              } else if (this != this.forOwn && product != "Wii" && (useFeatures && opera || /Opera/.test(name) && /\b(?:MSIE|Firefox)\b/i.test(ua) || name == "Firefox" && /\bOS X (?:\d+\.){2,}/.test(os) || name == "IE" && (os && !/^Win/.test(os) && version > 5.5 || /\bWindows XP\b/.test(os) && version > 8 || version == 8 && !/\bTrident\b/.test(ua))) && !this.reOpera.test(data = this.parse.call(this.forOwn, ua.replace(this.reOpera, "") + ";")) && data.name) {
+                // When "identifying", the UA contains both Opera and the other browser's name.
+                data = "ing as " + data.name + ((data = data.version) ? " " + data : "");
+                if (this.reOpera.test(name)) {
+                  if (/\bIE\b/.test(data) && os == "Mac OS") {
+                    os = null;
+                  }
+                  data = "identify" + data;
+                }
+                // When "masking", the UA contains only the other browser's name.
+                else {
+                    data = "mask" + data;
+                    if (operaClass) {
+                      name = this.format(operaClass.replace(/([a-z])([A-Z])/g, "$1 $2"));
+                    } else {
+                      name = "Opera";
+                    }
+                    if (/\bIE\b/.test(data)) {
+                      os = null;
+                    }
+                    if (!useFeatures) {
+                      version = null;
+                    }
+                  }
+                layout = ["Presto"];
+                description.push(data);
+              }
+
+      if (data = (/\bAppleWebKit\/([\d.]+\+?)/i.exec(ua) || 0)[1]) {
+        data = [parseFloat(data.replace(/\.(\d)$/, ".0$1")), data];
+        // Nightly builds are postfixed with a "+".
+        if (name == "Safari" && data[1].slice(-1) == "+") {
+          name = "WebKit Nightly";
+          prerelease = "alpha";
+          version = data[1].slice(0, -1);
+        } else if (version == data[1] || version == (data[2] = (/\bSafari\/([\d.]+\+?)/i.exec(ua) || 0)[1])) {
+          version = null;
+        }
+
+        data[1] = (/\bChrome\/([\d.]+)/i.exec(ua) || 0)[1];
+
+        if (data[0] == 537.36 && data[2] == 537.36 && parseFloat(data[1]) >= 28 && layout == "WebKit") {
+          layout = ["Blink"];
+        }
+
+        if (!useFeatures || !likeChrome && !data[1]) {
+          layout && (layout[1] = "like Safari");
+          data = (data = data[0], data < 400 ? 1 : data < 500 ? 2 : data < 526 ? 3 : data < 533 ? 4 : data < 534 ? "4+" : data < 535 ? 5 : data < 537 ? 6 : data < 538 ? 7 : data < 601 ? 8 : "8");
+        } else {
+          layout && (layout[1] = "like Chrome");
+          data = data[1] || (data = data[0], data < 530 ? 1 : data < 532 ? 2 : data < 532.05 ? 3 : data < 533 ? 4 : data < 534.03 ? 5 : data < 534.07 ? 6 : data < 534.1 ? 7 : data < 534.13 ? 8 : data < 534.16 ? 9 : data < 534.24 ? 10 : data < 534.3 ? 11 : data < 535.01 ? 12 : data < 535.02 ? "13+" : data < 535.07 ? 15 : data < 535.11 ? 16 : data < 535.19 ? 17 : data < 536.05 ? 18 : data < 536.1 ? 19 : data < 537.01 ? 20 : data < 537.11 ? "21+" : data < 537.13 ? 23 : data < 537.18 ? 24 : data < 537.24 ? 25 : data < 537.36 ? 26 : layout != "Blink" ? "27" : "28");
+        }
+        // Add the postfix of ".x" or "+" for approximate versions.
+        layout && (layout[1] += " " + (data += typeof data == "number" ? ".x" : /[.+]/.test(data) ? "" : "+"));
+        // Obscure version for some Safari 1-2 releases.
+        if (name == "Safari" && (!version || parseInt(version) > 45)) {
+          version = data;
+        }
+      }
+      // Detect Opera desktop modes.
+      if (name == "Opera" && (data = /\bzbov|zvav$/.exec(os))) {
+        name += " ";
+        description.unshift("desktop mode");
+        if (data == "zvav") {
+          name += "Mini";
+          version = null;
+        } else {
+          name += "Mobile";
+        }
+        os = os.replace(RegExp(" *" + data + "$"), "");
+      }
+      // Detect Chrome desktop mode.
+      else if (name == "Safari" && /\bChrome\b/.exec(layout && layout[1])) {
+          description.unshift("desktop mode");
+          name = "Chrome Mobile";
+          version = null;
+
+          if (/\bOS X\b/.test(os)) {
+            manufacturer = "Apple";
+            os = "iOS 4.3+";
+          } else {
+            os = null;
+          }
+        }
+      // Strip incorrect OS versions.
+      if (version && version.indexOf(data = /[\d.]+$/.exec(os)) == 0 && ua.indexOf("/" + data + "-") > -1) {
+        os = this.trim(os.replace(data, ""));
+      }
+      // Add layout engine.
+      if (layout && !/\b(?:Avant|Nook)\b/.test(name) && (/Browser|Lunascape|Maxthon/.test(name) || name != "Safari" && /^iOS/.test(os) && /\bSafari\b/.test(layout[1]) || /^(?:Adobe|Arora|Breach|Midori|Opera|Phantom|Rekonq|Rock|Samsung Internet|Sleipnir|Web)/.test(name) && layout[1])) {
+        (data = layout[layout.length - 1]) && description.push(data);
+      }
+      if (description.length) {
+        description = ["(" + description.join("; ") + ")"];
+      }
+      if (manufacturer && product && product.indexOf(manufacturer) < 0) {
+        description.push("on " + manufacturer);
+      }
+      if (product) {
+        description.push((/^on /.test(description[description.length - 1]) ? "" : "on ") + product);
+      }
+      // Parse the OS into an object.
+      if (os) {
+        data = / ([\d.+]+)$/.exec(os);
+        isSpecialCasedOS = data && os.charAt(os.length - data[0].length - 1) == "/";
+        os = {
+          architecture: 32,
+          family: data && !isSpecialCasedOS ? os.replace(data[0], "") : os,
+          version: data ? data[1] : null,
+          toString: function toString() {
+            var version = this.version;
+            return this.family + (version && !isSpecialCasedOS ? " " + version : "") + (this.architecture == 64 ? " 64-bit" : "");
+          }
+        };
+      }
+
+      if ((data = /\b(?:AMD|IA|Win|WOW|x86_|x)64\b/i.exec(arch)) && !/\bi686\b/i.test(arch)) {
+        if (os) {
+          os.architecture = 64;
+          os.family = os.family.replace(RegExp(" *" + data), "");
+        }
+        if (name && (/\bWOW64\b/i.test(ua) || useFeatures && /\w(?:86|32)$/.test(nav.cpuClass || nav.platform) && !/\bWin64; x64\b/i.test(ua))) {
+          description.unshift("32-bit");
+        }
+      } else if (os && /^OS X/.test(os.family) && name == "Chrome" && parseFloat(version) >= 39) {
+        os.architecture = 64;
+      }
+
+      ua || (ua = null);
+      this._platform.description = ua;
+      this._platform.layout = layout && layout[0];
+      this._platform.manufacturer = manufacturer;
+      this._platform.name = name;
+      this._platform.prerelease = prerelease;
+      this._platform.product = product;
+      this._platform.ua = ua;
+      this._platform.version = name && version;
+      this._platform.os = os || {
+        architecture: null,
+        family: null,
+        version: null,
+        toString: function toString() {
+          return "null";
+        }
+      };
+
+      this._platform.parse = this.parse;
+      this._platform.toString = toStringPlatform;
+
+      if (this._platform.version) {
+        description.unshift(version);
+      }
+      if (this._platform.name) {
+        description.unshift(name);
+      }
+      if (os && name && !(os == String(os).split(" ")[0] && (os == name.split(" ")[0] || product))) {
+        description.push(product ? "(" + os + ")" : "on " + os);
+      }
+      if (description.length) {
+        this._platform.description = description.join(" ");
+      }
+      return this._platform;
+    }
+  }, {
+    key: "init",
+    value: function init() {
+      this._platform = this.parse();
+      if (typeof define == "function" && _typeof(define.amd) == "object" && define.amd) {
+        this.root.platform = this._platform;
+        define(function () {
+          return this._platform;
+        });
+      } else if (this.freeExports && this.freeModule) {
+        this.forOwn(this._platform, function (value, key) {
+          this.freeExports[key] = value;
+        });
+      } else {
+        this._root.platform = this._platform;
+      }
+    }
+  }]);
+
+  return platform;
+}();
+
+
+
+// const os = new platform();
+// console.log("os===>", os._platform);
+
+var _typeof$1 = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 /* eslint camelcase: "off", eqeqeq: "off" */
-// since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
 if (typeof window === "undefined") {
   var loc = {
@@ -40,11 +706,11 @@ var ArrayProto = Array.prototype;
 var FuncProto = Function.prototype;
 var ObjProto = Object.prototype;
 var slice = ArrayProto.slice;
-var toString = ObjProto.toString;
-var hasOwnProperty = ObjProto.hasOwnProperty;
+var toString$1 = ObjProto.toString;
+var hasOwnProperty$1 = ObjProto.hasOwnProperty;
 var windowConsole = win.console;
 var navigator = win.navigator;
-var document = win.document;
+var document$1 = win.document;
 var windowOpera = win.opera;
 var screen = win.screen;
 var userAgent = navigator.userAgent;
@@ -159,7 +825,7 @@ _.each = function (obj, iterator, context) {
     }
   } else {
     for (var key in obj) {
-      if (hasOwnProperty.call(obj, key)) {
+      if (hasOwnProperty$1.call(obj, key)) {
         if (iterator.call(context, obj[key], key, obj) === breaker) {
           return;
         }
@@ -188,7 +854,7 @@ _.extend = function (obj) {
 };
 
 _.isArray = nativeIsArray || function (obj) {
-  return toString.call(obj) === "[object Array]";
+  return toString$1.call(obj) === "[object Array]";
 };
 
 // from a comment on http://dbj.org/dbj/?p=286
@@ -204,7 +870,7 @@ _.isFunction = function (f) {
 };
 
 _.isArguments = function (obj) {
-  return !!(obj && hasOwnProperty.call(obj, "callee"));
+  return !!(obj && hasOwnProperty$1.call(obj, "callee"));
 };
 
 _.toArray = function (iterable) {
@@ -284,7 +950,7 @@ _.isObject = function (obj) {
 _.isEmptyObject = function (obj) {
   if (_.isObject(obj)) {
     for (var key in obj) {
-      if (hasOwnProperty.call(obj, key)) {
+      if (hasOwnProperty$1.call(obj, key)) {
         return false;
       }
     }
@@ -298,15 +964,15 @@ _.isUndefined = function (obj) {
 };
 
 _.isString = function (obj) {
-  return toString.call(obj) == "[object String]";
+  return toString$1.call(obj) == "[object String]";
 };
 
 _.isDate = function (obj) {
-  return toString.call(obj) == "[object Date]";
+  return toString$1.call(obj) == "[object Date]";
 };
 
 _.isNumber = function (obj) {
-  return toString.call(obj) == "[object Number]";
+  return toString$1.call(obj) == "[object Number]";
 };
 
 _.isElement = function (obj) {
@@ -438,12 +1104,12 @@ _.JSONEncode = function () {
       var value = holder[key];
 
       // If the value has a toJSON method, call it to obtain a replacement value.
-      if (value && (typeof value === "undefined" ? "undefined" : _typeof(value)) === "object" && typeof value.toJSON === "function") {
+      if (value && (typeof value === "undefined" ? "undefined" : _typeof$1(value)) === "object" && typeof value.toJSON === "function") {
         value = value.toJSON(key);
       }
 
       // What happens next depends on the value's type.
-      switch (typeof value === "undefined" ? "undefined" : _typeof(value)) {
+      switch (typeof value === "undefined" ? "undefined" : _typeof$1(value)) {
         case "string":
           return quote(value);
 
@@ -473,7 +1139,7 @@ _.JSONEncode = function () {
           partial = [];
 
           // Is the value an array?
-          if (toString.apply(value) === "[object Array]") {
+          if (toString$1.apply(value) === "[object Array]") {
             // The value is an array. Stringify every element. Use null as a placeholder
             // for non-JSON values.
 
@@ -491,7 +1157,7 @@ _.JSONEncode = function () {
 
           // Iterate through all of the keys in the object.
           for (k in value) {
-            if (hasOwnProperty.call(value, k)) {
+            if (hasOwnProperty$1.call(value, k)) {
               v = str(k, value);
               if (v) {
                 partial.push(quote(k) + (gap ? ": " : ":") + v);
@@ -969,7 +1635,7 @@ _.getHashParam = function (hash, param) {
 _.cookie = {
   get: function get(name) {
     var nameEQ = name + "=";
-    var ca = document.cookie.split(";");
+    var ca = document$1.cookie.split(";");
     for (var i = 0; i < ca.length; i++) {
       var c = ca[i];
       while (c.charAt(0) == " ") {
@@ -1000,7 +1666,7 @@ _.cookie = {
     if (domain_override) {
       cdomain = "; domain=" + domain_override;
     } else if (is_cross_subdomain) {
-      var domain = extract_domain(document.location.hostname);
+      var domain = extract_domain(document$1.location.hostname);
       cdomain = domain ? "; domain=." + domain : "";
     }
 
@@ -1018,7 +1684,7 @@ _.cookie = {
       secure += "; secure";
     }
 
-    document.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + cdomain + secure;
+    document$1.cookie = name + "=" + encodeURIComponent(value) + expires + "; path=/" + cdomain + secure;
   },
 
   set: function set(name, value, days, is_cross_subdomain, is_secure, is_cross_site, domain_override) {
@@ -1029,7 +1695,7 @@ _.cookie = {
     if (domain_override) {
       cdomain = "; domain=" + domain_override;
     } else if (is_cross_subdomain) {
-      var domain = extract_domain(document.location.hostname);
+      var domain = extract_domain(document$1.location.hostname);
       cdomain = domain ? "; domain=." + domain : "";
     }
 
@@ -1048,7 +1714,7 @@ _.cookie = {
     }
 
     var new_cookie_val = name + "=" + encodeURIComponent(value) + expires + "; path=/" + cdomain + secure;
-    document.cookie = new_cookie_val;
+    document$1.cookie = new_cookie_val;
     return new_cookie_val;
   },
 
@@ -1238,13 +1904,13 @@ _.dom_query = function () {
 
   function getElementsBySelector(selector) {
     // Attempt to fail gracefully in lesser browsers
-    if (!document.getElementsByTagName) {
+    if (!document$1.getElementsByTagName) {
       return [];
     }
     // Split selector in to tokens
     var tokens = selector.split(" ");
     var token, bits, tagName, found, foundCount, i, j, k, elements, currentContextIndex;
-    var currentContext = [document];
+    var currentContext = [document$1];
     for (i = 0; i < tokens.length; i++) {
       token = tokens[i].replace(/^\s+/, "").replace(/\s+$/, "");
       if (token.indexOf("#") > -1) {
@@ -1252,7 +1918,7 @@ _.dom_query = function () {
         bits = token.split("#");
         tagName = bits[0];
         var id = bits[1];
-        var element = document.getElementById(id);
+        var element = document$1.getElementById(id);
         if (!element || tagName && element.nodeName.toLowerCase() != tagName) {
           // element not found or tag with that ID not found, return false
           return [];
@@ -1403,7 +2069,7 @@ _.info = {
         kw = "",
         params = {};
     _.each(campaign_keywords, function (kwkey) {
-      kw = _.getQueryParam(document.URL, kwkey);
+      kw = _.getQueryParam(document$1.URL, kwkey);
       if (kw.length) {
         params[kwkey] = kw;
       }
@@ -1443,117 +2109,6 @@ _.info = {
     return ret;
   },
 
-  /**
-   * This function detects which browser is running this script.
-   * The order of the checks are important since many user agents
-   * include key words used in later checks.
-   */
-  browser: function browser(user_agent, vendor, opera) {
-    vendor = vendor || ""; // vendor is undefined for at least IE9
-    if (opera || _.includes(user_agent, " OPR/")) {
-      if (_.includes(user_agent, "Mini")) {
-        return "Opera Mini";
-      }
-      return "Opera";
-    } else if (/(BlackBerry|PlayBook|BB10)/i.test(user_agent)) {
-      return "BlackBerry";
-    } else if (_.includes(user_agent, "IEMobile") || _.includes(user_agent, "WPDesktop")) {
-      return "Internet Explorer Mobile";
-    } else if (_.includes(user_agent, "SamsungBrowser/")) {
-      // https://developer.samsung.com/internet/user-agent-string-format
-      return "Samsung Internet";
-    } else if (_.includes(user_agent, "Edge") || _.includes(user_agent, "Edg/")) {
-      return "Microsoft Edge";
-    } else if (_.includes(user_agent, "FBIOS")) {
-      return "Facebook Mobile";
-    } else if (_.includes(user_agent, "Chrome")) {
-      return "Chrome";
-    } else if (_.includes(user_agent, "CriOS")) {
-      return "Chrome iOS";
-    } else if (_.includes(user_agent, "UCWEB") || _.includes(user_agent, "UCBrowser")) {
-      return "UC Browser";
-    } else if (_.includes(user_agent, "FxiOS")) {
-      return "Firefox iOS";
-    } else if (_.includes(vendor, "Apple")) {
-      if (_.includes(user_agent, "Mobile")) {
-        return "Mobile Safari";
-      }
-      return "Safari";
-    } else if (_.includes(user_agent, "Android")) {
-      return "Android Mobile";
-    } else if (_.includes(user_agent, "Konqueror")) {
-      return "Konqueror";
-    } else if (_.includes(user_agent, "Firefox")) {
-      return "Firefox";
-    } else if (_.includes(user_agent, "MSIE") || _.includes(user_agent, "Trident/")) {
-      return "Internet Explorer";
-    } else if (_.includes(user_agent, "Gecko")) {
-      return "Mozilla";
-    } else {
-      return "";
-    }
-  },
-
-  /**
-   * This function detects which browser version is running this script,
-   * parsing major and minor version (e.g., 42.1). User agent strings from:
-   * http://www.useragentstring.com/pages/useragentstring.php
-   */
-  browserVersion: function browserVersion(userAgent, vendor, opera) {
-    var browser = _.info.browser(userAgent, vendor, opera);
-    var versionRegexs = {
-      "Internet Explorer Mobile": /rv:(\d+(\.\d+)?)/,
-      "Microsoft Edge": /Edge?\/(\d+(\.\d+)?)/,
-      Chrome: /Chrome\/(\d+(\.\d+)?)/,
-      "Chrome iOS": /CriOS\/(\d+(\.\d+)?)/,
-      "UC Browser": /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
-      Safari: /Version\/(\d+(\.\d+)?)/,
-      "Mobile Safari": /Version\/(\d+(\.\d+)?)/,
-      Opera: /(Opera|OPR)\/(\d+(\.\d+)?)/,
-      Firefox: /Firefox\/(\d+(\.\d+)?)/,
-      "Firefox iOS": /FxiOS\/(\d+(\.\d+)?)/,
-      Konqueror: /Konqueror:(\d+(\.\d+)?)/,
-      BlackBerry: /BlackBerry (\d+(\.\d+)?)/,
-      "Android Mobile": /android\s(\d+(\.\d+)?)/,
-      "Samsung Internet": /SamsungBrowser\/(\d+(\.\d+)?)/,
-      "Internet Explorer": /(rv:|MSIE )(\d+(\.\d+)?)/,
-      Mozilla: /rv:(\d+(\.\d+)?)/
-    };
-    var regex = versionRegexs[browser];
-    if (regex === undefined) {
-      return null;
-    }
-    var matches = userAgent.match(regex);
-    if (!matches) {
-      return null;
-    }
-    return parseFloat(matches[matches.length - 2]);
-  },
-
-  os: function os() {
-    var a = userAgent;
-    if (/Windows/i.test(a)) {
-      if (/Phone/.test(a) || /WPDesktop/.test(a)) {
-        return "Windows Phone";
-      }
-      return "Windows";
-    } else if (/(iPhone|iPad|iPod)/.test(a)) {
-      return "iOS";
-    } else if (/Android/.test(a)) {
-      return "Android";
-    } else if (/(BlackBerry|PlayBook|BB10)/i.test(a)) {
-      return "BlackBerry";
-    } else if (/Mac/i.test(a)) {
-      return "Mac OS X";
-    } else if (/Linux/.test(a)) {
-      return "Linux";
-    } else if (/CrOS/.test(a)) {
-      return "Chrome OS";
-    } else {
-      return "";
-    }
-  },
-
   device: function device(user_agent) {
     if (/Windows Phone/i.test(user_agent) || /WPDesktop/.test(user_agent)) {
       return "Windows Phone";
@@ -1582,14 +2137,13 @@ _.info = {
 
   properties: function properties() {
     return _.extend(_.strip_empty_properties({
-      $os: _.info.os(),
-      $browser: _.info.browser(userAgent, navigator.vendor, windowOpera),
-      $referrer: document.referrer,
-      $referring_domain: _.info.referringDomain(document.referrer),
+      $os: _.info.platform().os,
+      $browser: _.info.platform().browser,
+      $referrer: document$1.referrer,
+      $referring_domain: _.info.referringDomain(document$1.referrer),
       $device: _.info.device(userAgent)
     }), {
       $current_url: win.location.href,
-      $browser_version: _.info.browserVersion(userAgent, navigator.vendor, windowOpera),
       $screen_height: screen.height,
       $screen_width: screen.width,
       mp_lib: "web",
@@ -1601,20 +2155,32 @@ _.info = {
 
   people_properties: function people_properties() {
     return _.extend(_.strip_empty_properties({
-      $os: _.info.os(),
-      $browser: _.info.browser(userAgent, navigator.vendor, windowOpera)
-    }), {
-      $browser_version: _.info.browserVersion(userAgent, navigator.vendor, windowOpera)
-    });
+      $os: _.info.platform().os,
+      $browser: _.info.platform().browser
+    }));
   },
 
   pageviewInfo: function pageviewInfo(page) {
     return _.strip_empty_properties({
       mp_page: page,
-      mp_referrer: document.referrer,
-      mp_browser: _.info.browser(userAgent, navigator.vendor, windowOpera),
-      mp_platform: _.info.os()
+      mp_referrer: document$1.referrer,
+      mp_browser: _.info.platform().browser,
+      mp_platform: _.info.platform().os
     });
+  },
+
+  platform: function platform$$1() {
+    var systemInfo = new platform();
+    var _systemInfo$_platform = systemInfo._platform,
+        os = _systemInfo$_platform.os,
+        name = _systemInfo$_platform.name,
+        version = _systemInfo$_platform.version;
+
+    return {
+      os: os.family + os.version + " " + os.architecture + "位",
+      browser: name + " " + version,
+      browserVersion: version
+    };
   }
 };
 
@@ -1622,19 +2188,7 @@ _.info = {
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
 var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
-/**
- * Attempts to extract main domain name from full hostname, using a few blunt heuristics. For
- * common TLDs like .com/.org that always have a simple SLD.TLD structure (example.com), we
- * simply extract the last two .-separated parts of the hostname (SIMPLE_DOMAIN_MATCH_REGEX).
- * For others, we attempt to account for short ccSLD+TLD combos (.ac.uk) with the legacy
- * DOMAIN_MATCH_REGEX (kept to maintain backwards compatibility with existing Mixpanel
- * integrations). The only _reliable_ way to extract domain from hostname is with an up-to-date
- * list like at https://publicsuffix.org/ so for cases that this helper fails at, the SDK
- * offers the 'cookie_domain' config option to set it explicitly.
- * @example
- * extract_domain('my.sub.example.com')
- * // 'example.com'
- */
+
 var extract_domain = function extract_domain(hostname) {
   var domain_regex = DOMAIN_MATCH_REGEX;
   var parts = hostname.split(".");
@@ -1646,6 +2200,24 @@ var extract_domain = function extract_domain(hostname) {
   return matches ? matches[0] : "";
 };
 
+var addListener = function addListener(element, type, handler) {
+  if (element.addEventListener) {
+    element.addEventListener(type, handler, false);
+  } else if (element.attachEvent) {
+    element.attachEvent("on" + type, handler);
+  } else {
+    element["on" + type] = handler;
+  }
+};
+
+var onload$1 = function onload(cb) {
+  if (document$1.readyState === "complete") {
+    cb();
+    return void 0;
+  }
+  addListener(window, "load", cb);
+};
+
 // EXPORTS (for closure compiler)
 _["toArray"] = _.toArray;
 _["isObject"] = _.isObject;
@@ -1655,61 +2227,476 @@ _["isBlockedUA"] = _.isBlockedUA;
 _["isEmptyObject"] = _.isEmptyObject;
 _["info"] = _.info;
 _["info"]["device"] = _.info.device;
-_["info"]["browser"] = _.info.browser;
-_["info"]["browserVersion"] = _.info.browserVersion;
 _["info"]["properties"] = _.info.properties;
+
+var _createClass$1 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck$1(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+// import "@fastly/performance-observer-polyfill/polyfill";
+var performance = window.performance || window.mozPerformance || window.msPerformance || window.webkitPerformance;
+
+var Perf = function () {
+  function Perf(options) {
+    var _this = this;
+
+    _classCallCheck$1(this, Perf);
+
+    this._options = options;
+    this.isOnload = false;
+    this.isDOMReady = false;
+    this.cycleFreq = 100;
+
+    this.domready(function () {
+      var perfData = _this.getTimingReport();
+      perfData.type = "domready";
+      options.timingReport(perfData);
+    });
+    this.onload(function () {
+      var perfData = _this.getTimingReport();
+      perfData.type = "onload";
+      options.timingReport(perfData);
+    });
+
+    onload$1(this.getResourceReport.bind(this));
+  }
+
+  _createClass$1(Perf, [{
+    key: "getResourceReport",
+    value: function getResourceReport() {
+      var _this2 = this;
+
+      // 过滤无效数据
+      function filterTime(a, b) {
+        return a > 0 && b > 0 && a - b >= 0 ? a - b : undefined;
+      }
+
+      var resolvePerformanceTiming = function resolvePerformanceTiming(timing) {
+        var o = {
+          initiatorType: timing.initiatorType,
+          name: timing.name,
+          duration: parseInt(timing.duration),
+          redirect: filterTime(timing.redirectEnd, timing.redirectStart), // 重定向
+          dns: filterTime(timing.domainLookupEnd, timing.domainLookupStart), // DNS解析
+          connect: filterTime(timing.connectEnd, timing.connectStart), // TCP建连
+          network: filterTime(timing.connectEnd, timing.startTime), // 网络总耗时
+
+          send: filterTime(timing.responseStart, timing.requestStart), // 发送开始到接受第一个返回
+          receive: filterTime(timing.responseEnd, timing.responseStart), // 接收总时间
+          request: filterTime(timing.responseEnd, timing.requestStart), // 总时间
+
+          ttfb: filterTime(timing.responseStart, timing.requestStart) // 首字节时间
+        };
+
+        return o;
+      };
+
+      var resolveEntries = function resolveEntries(entries) {
+        return entries.map(function (item) {
+          return resolvePerformanceTiming(item);
+        });
+      };
+
+      if (window.PerformanceObserver) {
+        var observer = new PerformanceObserver(function (list) {
+          try {
+            var entries = list.getEntries();
+            _this2._options.resourceReport(resolveEntries(entries));
+          } catch (e) {
+            console.error(e);
+          }
+        });
+        observer.observe({
+          entryTypes: typeof this._options.type != "undefined" ? this._options.type : ["resource"]
+        });
+      } else {
+        onload(function () {
+          var entries = performance.getEntriesByType("resource");
+          // cb(resolveEntries(entries));
+        });
+      }
+    }
+  }, {
+    key: "getTimingReport",
+    value: function getTimingReport() {
+      if (!performance) {
+        return void 0;
+      }
+
+      // 过滤无效数据；
+      function filterTime(a, b) {
+        return a > 0 && b > 0 && a - b >= 0 ? a - b : undefined;
+      }
+
+      // append data from window.performance
+      var timing = performance.timing;
+
+      var perfData = {
+        // 网络建连
+        pervPage: filterTime(timing.fetchStart, timing.navigationStart), // 上一个页面
+        redirect: filterTime(timing.responseEnd, timing.redirectStart), // 页面重定向时间
+        dns: filterTime(timing.domainLookupEnd, timing.domainLookupStart), // DNS查找时间
+        connect: filterTime(timing.connectEnd, timing.connectStart), // TCP建连时间
+        network: filterTime(timing.connectEnd, timing.navigationStart), // 网络总耗时
+
+        // 网络接收
+        send: filterTime(timing.responseStart, timing.requestStart), // 前端从发送到接收到后端第一个返回
+        receive: filterTime(timing.responseEnd, timing.responseStart), // 接受页面时间
+        request: filterTime(timing.responseEnd, timing.requestStart), // 请求页面总时间
+
+        // 前端渲染
+        dom: filterTime(timing.domComplete, timing.domLoading), // dom解析时间
+        loadEvent: filterTime(timing.loadEventEnd, timing.loadEventStart), // loadEvent时间
+        frontend: filterTime(timing.loadEventEnd, timing.domLoading), // 前端总时间
+
+        // 关键阶段
+        load: filterTime(timing.loadEventEnd, timing.navigationStart), // 页面完全加载总时间
+        domReady: filterTime(timing.domContentLoadedEventStart, timing.navigationStart), // domready时间
+        interactive: filterTime(timing.domInteractive, timing.navigationStart), // 可操作时间
+        ttfb: filterTime(timing.responseStart, timing.navigationStart) // 首字节时间
+      };
+
+      return perfData;
+    }
+
+    // DOM解析完成
+
+  }, {
+    key: "domready",
+    value: function domready(callback) {
+      var that = this;
+      if (this.isOnload === true) {
+        return void 0;
+      }
+      var timer = null;
+
+      if (document.readyState === "interactive") {
+        runCheck();
+      } else if (document.addEventListener) {
+        document.addEventListener("DOMContentLoaded", function () {
+          runCheck();
+        }, false);
+      } else if (document.attachEvent) {
+        document.attachEvent("onreadystatechange", function () {
+          runCheck();
+        });
+      }
+
+      function runCheck() {
+        if (performance.timing.domInteractive) {
+          clearTimeout(timer);
+          callback();
+          that.isDOMReady = true;
+        } else {
+          timer = setTimeout(runCheck, that.cycleFreq);
+        }
+      }
+    }
+
+    // 页面加载完成
+
+  }, {
+    key: "onload",
+    value: function onload$$1(callback) {
+      var that = this;
+      var timer = null;
+
+      if (document.readyState === "complete") {
+        runCheck();
+      } else {
+        addListener(window, "load", function () {
+          runCheck();
+        }, false);
+      }
+
+      function runCheck() {
+        if (performance.timing.loadEventEnd) {
+          clearTimeout(timer);
+          callback();
+          this.isOnload = true;
+        } else {
+          timer = setTimeout(runCheck, that.cycleFreq);
+        }
+      }
+    }
+  }]);
+
+  return Perf;
+}();
+
+function configEvent(event, xhrProxy) {
+  var e = {};
+  for (var attr in event) {
+    e[attr] = event[attr];
+  } // xhrProxy instead
+  e.target = e.currentTarget = xhrProxy;
+  return e;
+}
+
+/*
+ * author: wendux
+ * email: 824783146@qq.com
+ * source code: https://github.com/wendux/Ajax-hook
+ */
+
+var events = ['load', 'loadend', 'timeout', 'error', 'readystatechange', 'abort'];
+var eventLoad = events[0];
+var eventLoadEnd = events[1];
+var eventReadyStateChange = events[4];
+
+var prototype = 'prototype';
+
+
+
+
+
+function getEventTarget(xhr) {
+    return xhr.watcher || (xhr.watcher = document.createElement('a'));
+}
+
+function triggerListener(xhr, name) {
+    var xhrProxy = xhr.getProxy();
+    var callback = 'on' + name + '_';
+    var event = configEvent({ type: name }, xhrProxy);
+    xhrProxy[callback] && xhrProxy[callback](event);
+    var evt;
+    if (typeof Event === 'function') {
+        evt = new Event(name, { bubbles: false });
+    } else {
+        // https://stackoverflow.com/questions/27176983/dispatchevent-not-working-in-ie11
+        evt = document.createEvent('Event');
+        evt.initEvent(name, false, true);
+    }
+    getEventTarget(xhr).dispatchEvent(evt);
+}
+
+function Handler(xhr) {
+    this.xhr = xhr;
+    this.xhrProxy = xhr.getProxy();
+}
+
+Handler[prototype] = Object.create({
+    resolve: function resolve(response) {
+        var xhrProxy = this.xhrProxy;
+        var xhr = this.xhr;
+        xhrProxy.readyState = 4;
+        xhr.resHeader = response.headers;
+        xhrProxy.response = xhrProxy.responseText = response.response;
+        xhrProxy.statusText = response.statusText;
+        xhrProxy.status = response.status;
+        triggerListener(xhr, eventReadyStateChange);
+        triggerListener(xhr, eventLoad);
+        triggerListener(xhr, eventLoadEnd);
+    },
+    reject: function reject(error) {
+        this.xhrProxy.status = 0;
+        triggerListener(this.xhr, error.type);
+        triggerListener(this.xhr, eventLoadEnd);
+    }
+});
+
+function makeHandler(next) {
+    function sub(xhr) {
+        Handler.call(this, xhr);
+    }
+
+    sub[prototype] = Object.create(Handler[prototype]);
+    sub[prototype].next = next;
+    return sub;
+}
+
+var RequestHandler = makeHandler(function (rq) {
+    var xhr = this.xhr;
+    rq = rq || xhr.config;
+    xhr.withCredentials = rq.withCredentials;
+    xhr.open(rq.method, rq.url, rq.async !== false, rq.user, rq.password);
+    for (var key in rq.headers) {
+        xhr.setRequestHeader(key, rq.headers[key]);
+    }
+    xhr.send(rq.body);
+});
+
+var ResponseHandler = makeHandler(function (response) {
+    this.resolve(response);
+});
+
+var ErrorHandler = makeHandler(function (error) {
+    this.reject(error);
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+var _createClass$2 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck$2(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+// TODO:
+
+var ErrorCatch = function () {
+  function ErrorCatch(options) {
+    _classCallCheck$2(this, ErrorCatch);
+
+    this._options = options;
+    this.init();
+  }
+
+  _createClass$2(ErrorCatch, [{
+    key: "formatError",
+    value: function formatError(errObj) {
+      var col = errObj.column || errObj.columnNumber; // Safari Firefox
+      var row = errObj.line || errObj.lineNumber; // Safari Firefox
+      var message = errObj.message;
+      var name = errObj.name;
+
+      console.log("error=======stacl=<<<>>>", errObj);
+
+      var stack = errObj.stack;
+
+      if (stack) {
+        console.log("error====statck存在===stacl=<<<>>>", errObj);
+        var matchUrl = stack.match(/https?:\/\/[^\n]+/);
+        var urlFirstStack = matchUrl ? matchUrl[0] : "";
+        var regUrlCheck = /https?:\/\/(\S)*\.js/;
+
+        var resourceUrl = "";
+        if (regUrlCheck.test(urlFirstStack)) {
+          resourceUrl = urlFirstStack.match(regUrlCheck)[0];
+        }
+
+        var stackCol = null;
+        var stackRow = null;
+        var posStack = urlFirstStack.match(/:(\d+):(\d+)/);
+        if (posStack && posStack.length >= 3) {
+          var _posStack = _slicedToArray(posStack, 3);
+
+          stackCol = _posStack[1];
+          stackRow = _posStack[2];
+        }
+
+        // TODO formatStack
+        return {
+          content: stack,
+          col: Number(col || stackCol),
+          row: Number(row || stackRow),
+          message: message,
+          name: name,
+          resourceUrl: resourceUrl
+        };
+      }
+
+      return {
+        row: row,
+        col: col,
+        message: message,
+        name: name
+      };
+    }
+  }, {
+    key: "init",
+    value: function init() {
+      var _this = this;
+
+      var _originOnerror = window.onerror;
+      window.onerror = function () {
+        for (var _len = arguments.length, arg = Array(_len), _key = 0; _key < _len; _key++) {
+          arg[_key] = arguments[_key];
+        }
+
+        var errorMessage = arg[0],
+            scriptURI = arg[1],
+            lineNumber = arg[2],
+            columnNumber = arg[3],
+            errorObj = arg[4];
+
+
+        var errorInfo = _this.formatError(errorObj);
+        errorInfo._errorMessage = errorMessage;
+        errorInfo._scriptURI = scriptURI;
+        errorInfo._lineNumber = lineNumber;
+        errorInfo._columnNumber = columnNumber;
+        errorInfo.type = "onerror";
+        _this._options.callback(errorInfo);
+        _originOnerror && _originOnerror.apply(window, arg);
+      };
+
+      var _originOnunhandledrejection = window.onunhandledrejection;
+      window.onunhandledrejection = function () {
+        for (var _len2 = arguments.length, arg = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+          arg[_key2] = arguments[_key2];
+        }
+
+        var e = arg[0];
+        var reason = e.reason;
+        _this._options.callback({
+          type: e.type || "unhandledrejection",
+          reason: reason
+        });
+        _originOnunhandledrejection && _originOnunhandledrejection.apply(window, arg);
+      };
+    }
+  }]);
+
+  return ErrorCatch;
+}();
+
+var _createClass$3 = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck$3(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /*
  * @Author: zhanghongwei
  * @Date: 2020-05-23 14:36:43
- * @Last Modified by: zhanghongwei
- * @Last Modified time: 2020-05-23 15:27:13
+ * @Last Modified by: mikey.zhaopeng
+ * @Last Modified time: 2020-06-24 09:20:10
  */
 
-// import Perf from "./performance";
-// import { proxy as ajaxHook, unProxy } from "./ajaxHook/xhr-proxy";
-// // import worker from "./worker";
+var Monitor = function () {
+  function Monitor() {
+    _classCallCheck$3(this, Monitor);
 
-// import ErrorCatch from "./error/index.js";
+    this.init();
+  }
 
-// class Monitor {
-//   constructor() {
-//     this.init();
-//   }
+  _createClass$3(Monitor, [{
+    key: "init",
+    value: function init() {
+      // worker();
+      // 收集ajax fetch
+      // ajaxHook({
+      //   //请求成功后进入
+      //   onResponse: (response, handler) => {
+      //     handler.next(response);
+      //   },
+      // });
 
-//   init() {
-//     // worker();
-//     // 收集ajax fetch
-//     ajaxHook({
-//       //请求成功后进入
-//       onResponse: (response, handler) => {
-//         handler.next(response);
-//       },
-//     });
+      // 性能监控
+      var pf = new Perf({
+        timingReport: function timingReport(data) {
+          console.log(123);
+          console.log("data=======>", data);
+        },
+        resourceReport: function resourceReport(data) {}
+      });
 
-//     // 性能监控
-//     const pf = new Perf({
-//       timingReport: (data) => {
-//         console.log(123);
-//         console.log("data=======>", data);
-//       },
-//       resourceReport: (data) => {},
-//     });
+      // 收集错误信息
+      // const error = new ErrorCatch({
+      //   callback: (err) => {
+      //     console.log("err================<", err);
+      //   },
+      // });
+    }
+  }]);
 
-//     // 收集错误信息
-//     const error = new ErrorCatch({
-//       callback: (err) => {
-//         console.log("err================<", err);
-//       },
-//     });
-//   }
-// }
+  return Monitor;
+}();
 
-// new Monitor();
-// let infos = _.info.properties(),;
-window._ = _;
+new Monitor();
+// import { _, userAgent, addListener } from "./utils/index";
 
-console.log("infos======>", _);
+// // let infos = _.info.properties(),;
+// window._ = _;
+
+// console.log("infos======>", _.info.pageviewInfo());
 
 })));
 //# sourceMappingURL=bundle.umd.js.map

@@ -67,7 +67,10 @@ class Perf {
         }
       });
       observer.observe({
-        entryTypes: options.type ? options.type : ["resource"],
+        entryTypes:
+          typeof this._options.type != "undefined"
+            ? this._options.type
+            : ["resource"],
       });
     } else {
       onload(() => {

@@ -1,5 +1,6 @@
 /* eslint camelcase: "off", eqeqeq: "off" */
 import Config from "./config";
+import platform from "../system/index"
 
 // since es6 imports are static and we run unit tests from the console, window won't be defined when importing this file
 var win;
@@ -1556,129 +1557,6 @@ _.info = {
     return ret;
   },
 
-  /**
-   * This function detects which browser is running this script.
-   * The order of the checks are important since many user agents
-   * include key words used in later checks.
-   */
-  browser: function (user_agent, vendor, opera) {
-    vendor = vendor || ""; // vendor is undefined for at least IE9
-    if (opera || _.includes(user_agent, " OPR/")) {
-      if (_.includes(user_agent, "Mini")) {
-        return "Opera Mini";
-      }
-      return "Opera";
-    } else if (/(BlackBerry|PlayBook|BB10)/i.test(user_agent)) {
-      return "BlackBerry";
-    } else if (
-      _.includes(user_agent, "IEMobile") ||
-      _.includes(user_agent, "WPDesktop")
-    ) {
-      return "Internet Explorer Mobile";
-    } else if (_.includes(user_agent, "SamsungBrowser/")) {
-      // https://developer.samsung.com/internet/user-agent-string-format
-      return "Samsung Internet";
-    } else if (
-      _.includes(user_agent, "Edge") ||
-      _.includes(user_agent, "Edg/")
-    ) {
-      return "Microsoft Edge";
-    } else if (_.includes(user_agent, "FBIOS")) {
-      return "Facebook Mobile";
-    } else if (_.includes(user_agent, "Chrome")) {
-      return "Chrome";
-    } else if (_.includes(user_agent, "CriOS")) {
-      return "Chrome iOS";
-    } else if (
-      _.includes(user_agent, "UCWEB") ||
-      _.includes(user_agent, "UCBrowser")
-    ) {
-      return "UC Browser";
-    } else if (_.includes(user_agent, "FxiOS")) {
-      return "Firefox iOS";
-    } else if (_.includes(vendor, "Apple")) {
-      if (_.includes(user_agent, "Mobile")) {
-        return "Mobile Safari";
-      }
-      return "Safari";
-    } else if (_.includes(user_agent, "Android")) {
-      return "Android Mobile";
-    } else if (_.includes(user_agent, "Konqueror")) {
-      return "Konqueror";
-    } else if (_.includes(user_agent, "Firefox")) {
-      return "Firefox";
-    } else if (
-      _.includes(user_agent, "MSIE") ||
-      _.includes(user_agent, "Trident/")
-    ) {
-      return "Internet Explorer";
-    } else if (_.includes(user_agent, "Gecko")) {
-      return "Mozilla";
-    } else {
-      return "";
-    }
-  },
-
-  /**
-   * This function detects which browser version is running this script,
-   * parsing major and minor version (e.g., 42.1). User agent strings from:
-   * http://www.useragentstring.com/pages/useragentstring.php
-   */
-  browserVersion: function (userAgent, vendor, opera) {
-    var browser = _.info.browser(userAgent, vendor, opera);
-    var versionRegexs = {
-      "Internet Explorer Mobile": /rv:(\d+(\.\d+)?)/,
-      "Microsoft Edge": /Edge?\/(\d+(\.\d+)?)/,
-      Chrome: /Chrome\/(\d+(\.\d+)?)/,
-      "Chrome iOS": /CriOS\/(\d+(\.\d+)?)/,
-      "UC Browser": /(UCBrowser|UCWEB)\/(\d+(\.\d+)?)/,
-      Safari: /Version\/(\d+(\.\d+)?)/,
-      "Mobile Safari": /Version\/(\d+(\.\d+)?)/,
-      Opera: /(Opera|OPR)\/(\d+(\.\d+)?)/,
-      Firefox: /Firefox\/(\d+(\.\d+)?)/,
-      "Firefox iOS": /FxiOS\/(\d+(\.\d+)?)/,
-      Konqueror: /Konqueror:(\d+(\.\d+)?)/,
-      BlackBerry: /BlackBerry (\d+(\.\d+)?)/,
-      "Android Mobile": /android\s(\d+(\.\d+)?)/,
-      "Samsung Internet": /SamsungBrowser\/(\d+(\.\d+)?)/,
-      "Internet Explorer": /(rv:|MSIE )(\d+(\.\d+)?)/,
-      Mozilla: /rv:(\d+(\.\d+)?)/,
-    };
-    var regex = versionRegexs[browser];
-    if (regex === undefined) {
-      return null;
-    }
-    var matches = userAgent.match(regex);
-    if (!matches) {
-      return null;
-    }
-    return parseFloat(matches[matches.length - 2]);
-  },
-
-  os: function () {
-    var a = userAgent;
-    if (/Windows/i.test(a)) {
-      if (/Phone/.test(a) || /WPDesktop/.test(a)) {
-        return "Windows Phone";
-      }
-      return "Windows";
-    } else if (/(iPhone|iPad|iPod)/.test(a)) {
-      return "iOS";
-    } else if (/Android/.test(a)) {
-      return "Android";
-    } else if (/(BlackBerry|PlayBook|BB10)/i.test(a)) {
-      return "BlackBerry";
-    } else if (/Mac/i.test(a)) {
-      return "Mac OS X";
-    } else if (/Linux/.test(a)) {
-      return "Linux";
-    } else if (/CrOS/.test(a)) {
-      return "Chrome OS";
-    } else {
-      return "";
-    }
-  },
-
   device: function (user_agent) {
     if (/Windows Phone/i.test(user_agent) || /WPDesktop/.test(user_agent)) {
       return "Windows Phone";
@@ -1708,19 +1586,14 @@ _.info = {
   properties: function () {
     return _.extend(
       _.strip_empty_properties({
-        $os: _.info.os(),
-        $browser: _.info.browser(userAgent, navigator.vendor, windowOpera),
+        $os: _.info.platform().os,
+        $browser:  _.info.platform().browser,
         $referrer: document.referrer,
         $referring_domain: _.info.referringDomain(document.referrer),
         $device: _.info.device(userAgent),
       }),
       {
         $current_url: win.location.href,
-        $browser_version: _.info.browserVersion(
-          userAgent,
-          navigator.vendor,
-          windowOpera
-        ),
         $screen_height: screen.height,
         $screen_width: screen.width,
         mp_lib: "web",
@@ -1736,16 +1609,9 @@ _.info = {
   people_properties: function () {
     return _.extend(
       _.strip_empty_properties({
-        $os: _.info.os(),
-        $browser: _.info.browser(userAgent, navigator.vendor, windowOpera),
+        $os: _.info.platform().os,
+        $browser: _.info.platform().browser,
       }),
-      {
-        $browser_version: _.info.browserVersion(
-          userAgent,
-          navigator.vendor,
-          windowOpera
-        ),
-      }
     );
   },
 
@@ -1753,29 +1619,27 @@ _.info = {
     return _.strip_empty_properties({
       mp_page: page,
       mp_referrer: document.referrer,
-      mp_browser: _.info.browser(userAgent, navigator.vendor, windowOpera),
-      mp_platform: _.info.os(),
+      mp_browser: _.info.platform().browser,
+      mp_platform: _.info.platform().os,
     });
   },
+  
+  platform: function () {
+    const systemInfo = new platform();
+    const {os,name, version } = systemInfo._platform;
+    return {
+      os: os.family + os.version + " " + os.architecture + "位",
+      browser: name + " " + version,
+      browserVersion : version
+    };
+  }
 };
 
 // naive way to extract domain name (example.com) from full hostname (my.sub.example.com)
 var SIMPLE_DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]*\.[a-z]+$/i;
 // this next one attempts to account for some ccSLDs, e.g. extracting oxford.ac.uk from www.oxford.ac.uk
 var DOMAIN_MATCH_REGEX = /[a-z0-9][a-z0-9-]+\.[a-z.]{2,6}$/i;
-/**
- * Attempts to extract main domain name from full hostname, using a few blunt heuristics. For
- * common TLDs like .com/.org that always have a simple SLD.TLD structure (example.com), we
- * simply extract the last two .-separated parts of the hostname (SIMPLE_DOMAIN_MATCH_REGEX).
- * For others, we attempt to account for short ccSLD+TLD combos (.ac.uk) with the legacy
- * DOMAIN_MATCH_REGEX (kept to maintain backwards compatibility with existing Mixpanel
- * integrations). The only _reliable_ way to extract domain from hostname is with an up-to-date
- * list like at https://publicsuffix.org/ so for cases that this helper fails at, the SDK
- * offers the 'cookie_domain' config option to set it explicitly.
- * @example
- * extract_domain('my.sub.example.com')
- * // 'example.com'
- */
+
 var extract_domain = function (hostname) {
   var domain_regex = DOMAIN_MATCH_REGEX;
   var parts = hostname.split(".");
@@ -1824,8 +1688,6 @@ _["isBlockedUA"] = _.isBlockedUA;
 _["isEmptyObject"] = _.isEmptyObject;
 _["info"] = _.info;
 _["info"]["device"] = _.info.device;
-_["info"]["browser"] = _.info.browser;
-_["info"]["browserVersion"] = _.info.browserVersion;
 _["info"]["properties"] = _.info.properties;
 
 export {

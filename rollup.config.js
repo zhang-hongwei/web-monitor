@@ -22,7 +22,7 @@ export default {
   },
   output: {
     file: isDev
-      ? "../website/client/script/eagle-monitor/bundle.umd.js"
+      ? "./dist/bundle.umd.js"
       : "./dist/bundle.umd.js",
     name: "EagleMonitor",
     format: "umd",
